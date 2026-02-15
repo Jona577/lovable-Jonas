@@ -1,0 +1,4 @@
+project_id = "pgkxbktvcpdrhtubflor"
+
+[functions.nutrition-ai]
+verify_jwt = false
