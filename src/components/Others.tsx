@@ -1,4 +1,3 @@
-// Finance and Study Dashboard Component
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from "@/integrations/supabase/client";
