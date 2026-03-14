@@ -85,11 +85,17 @@ const Tasks: React.FC<TasksProps> = ({ isDarkMode, onViewChange }) => {
   const [editingTask, setEditingTask] = useState<ExtendedTask | null>(null);
 
   useEffect(() => {
-    const savedTasks = localStorage.getItem('produtivity_tasks_v3');
-    if (savedTasks) setTasks(JSON.parse(savedTasks));
+    const loadData = () => {
+      const savedTasks = localStorage.getItem('produtivity_tasks_v3');
+      if (savedTasks) setTasks(JSON.parse(savedTasks));
 
-    const savedCats = localStorage.getItem('produtivity_categories');
-    if (savedCats) setCategories(JSON.parse(savedCats));
+      const savedCats = localStorage.getItem('produtivity_categories');
+      if (savedCats) setCategories(JSON.parse(savedCats));
+    };
+
+    loadData();
+    window.addEventListener('local-storage-sync-completed', loadData);
+    return () => window.removeEventListener('local-storage-sync-completed', loadData);
   }, []);
 
   const saveTasks = (newTasks: ExtendedTask[]) => {

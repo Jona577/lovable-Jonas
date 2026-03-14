@@ -12,15 +12,20 @@ import Others from '@/components/Others';
 import Settings from '@/components/Settings';
 
 const Index: React.FC = () => {
-  const [activePage, setActivePage] = useState<Page>('Study');
+  const [activePage, setActivePage] = useState<Page>(() => (sessionStorage.getItem('produtivity_active_page') as Page) || 'Study');
   const [userName, setUserName] = useState('Usuário');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [fullScreenItem, setFullScreenItem] = useState<any | null>(null);
   const [isClosing, setIsClosing] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [studyView, setStudyView] = useState<string>('menu');
-  const [taskView, setTaskView] = useState<string>('tasks');
-  const [othersView, setOthersView] = useState<string>('entry');
+  const [studyView, setStudyView] = useState<string>(() => sessionStorage.getItem('produtivity_study_view') || 'menu');
+  const [taskView, setTaskView] = useState<string>(() => sessionStorage.getItem('produtivity_task_view') || 'tasks');
+  const [othersView, setOthersView] = useState<string>(() => sessionStorage.getItem('produtivity_others_view') || 'entry');
+
+  useEffect(() => { sessionStorage.setItem('produtivity_active_page', activePage); }, [activePage]);
+  useEffect(() => { sessionStorage.setItem('produtivity_study_view', studyView); }, [studyView]);
+  useEffect(() => { sessionStorage.setItem('produtivity_task_view', taskView); }, [taskView]);
+  useEffect(() => { sessionStorage.setItem('produtivity_others_view', othersView); }, [othersView]);
 
   // Views do Study que devem esconder a sidebar e ocupar tela cheia
   const fullPageStudyViews = [
