@@ -571,13 +571,36 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   };
 
   const [motivation, setMotivation] = useState<string | null>(null);
+  const [motivationHistory, setMotivationHistory] = useState<{ text: string; feedback: 'like' | 'dislike'; date: string }[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('produtivity_others_motivation_history') || '[]');
+    } catch { return []; }
+  });
   const [isLoadingMotivation, setIsLoadingMotivation] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const saveMotivationHistory = (history: { text: string; feedback: 'like' | 'dislike'; date: string }[]) => {
+    setMotivationHistory(history);
+    localStorage.setItem('produtivity_others_motivation_history', JSON.stringify(history));
+  };
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<NoteCategory[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>('lastModified');
+  const [sortBy, setSortByState] = useState<SortOption>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return (prefs.notes_sort as SortOption) || 'lastModified';
+    } catch { return 'lastModified'; }
+  });
+  const setSortBy = (val: SortOption) => {
+    setSortByState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.notes_sort = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
 
   const [currentNote, setCurrentNote] = useState<Partial<Note>>({});
   const [newCatName, setNewCatName] = useState('');
@@ -725,8 +748,34 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   const [financeRecords, setFinanceRecords] = useState<FinanceRecord[]>([]);
   const [selectedFinanceRecord, setSelectedFinanceRecord] = useState<FinanceRecord | null>(null);
   const [financeRecordToDelete, setFinanceRecordToDelete] = useState<FinanceRecord | null>(null);
-  const [financeSortBy, setFinanceSortBy] = useState<'date_desc' | 'date_asc' | 'value_desc' | 'value_asc' | 'alphabetical' | 'category'>('date_desc');
-  const [financeFilterPeriod, setFinanceFilterPeriod] = useState<'todos' | 'diario' | 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('todos');
+  const [financeSortBy, setFinanceSortByState] = useState<'date_desc' | 'date_asc' | 'value_desc' | 'value_asc' | 'alphabetical' | 'category'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_records_sort || 'date_desc';
+    } catch { return 'date_desc'; }
+  });
+  const setFinanceSortBy = (val: 'date_desc' | 'date_asc' | 'value_desc' | 'value_asc' | 'alphabetical' | 'category') => {
+    setFinanceSortByState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_records_sort = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+  const [financeFilterPeriod, setFinanceFilterPeriodState] = useState<'todos' | 'diario' | 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_records_period || 'todos';
+    } catch { return 'todos'; }
+  });
+  const setFinanceFilterPeriod = (val: 'todos' | 'diario' | 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual') => {
+    setFinanceFilterPeriodState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_records_period = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
   const [financeFilterDate, setFinanceFilterDate] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -742,7 +791,20 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   const [financeDiarioMonth, setFinanceDiarioMonth] = useState<number>(new Date().getMonth() + 1);
 
   // Chart state for finances_expenses pie chart
-  const [finChartPeriodMode, setFinChartPeriodMode] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [finChartPeriodMode, setFinChartPeriodModeState] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_pie_period || 'mensal';
+    } catch { return 'mensal'; }
+  });
+  const setFinChartPeriodMode = (val: 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual') => {
+    setFinChartPeriodModeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_pie_period = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
   const [finChartWeekIdx, setFinChartWeekIdx] = useState<number>(0);
   const [finChartPeriodIdx, setFinChartPeriodIdx] = useState<number>(1);
   const [finChartHiddenCats, setFinChartHiddenCats] = useState<Record<string, boolean>>({});
@@ -751,7 +813,20 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   const [finChartPieAnimKey, setFinChartPieAnimKey] = useState(0);
 
   // Bar Chart state
-  const [finBarPeriodMode, setFinBarPeriodMode] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [finBarPeriodMode, setFinBarPeriodModeState] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_bar_period || 'mensal';
+    } catch { return 'mensal'; }
+  });
+  const setFinBarPeriodMode = (val: 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual') => {
+    setFinBarPeriodModeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_bar_period = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
   const [finBarYear, setFinBarYear] = useState<number>(new Date().getFullYear());
   const [finBarMonth, setFinBarMonth] = useState<number>(new Date().getMonth() + 1);
   const [finBarWeekIdx, setFinBarWeekIdx] = useState<number>(0);
@@ -760,7 +835,20 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   const [finChartBarAnimKey, setFinChartBarAnimKey] = useState(0);
 
   // Line Chart state
-  const [finLinePeriodMode, setFinLinePeriodMode] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [finLinePeriodMode, setFinLinePeriodModeState] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_line_period || 'mensal';
+    } catch { return 'mensal'; }
+  });
+  const setFinLinePeriodMode = (val: 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual') => {
+    setFinLinePeriodModeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_line_period = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
   const [finLineYear, setFinLineYear] = useState<number>(new Date().getFullYear());
   const [finLineMonth, setFinLineMonth] = useState<number>(new Date().getMonth() + 1);
   const [finLineWeekIdx, setFinLineWeekIdx] = useState<number>(0);
@@ -771,7 +859,20 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
 
   // Income Chart states
   // Income Bar Chart states
-  const [finIncBarPeriodMode, setFinIncBarPeriodMode] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [finIncBarPeriodMode, setFinIncBarPeriodModeState] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_inc_bar_period || 'mensal';
+    } catch { return 'mensal'; }
+  });
+  const setFinIncBarPeriodMode = (val: 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual') => {
+    setFinIncBarPeriodModeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_inc_bar_period = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
   const [finIncBarYear, setFinIncBarYear] = useState<number>(new Date().getFullYear());
   const [finIncBarMonth, setFinIncBarMonth] = useState<number>(new Date().getMonth() + 1);
   const [finIncBarWeekIdx, setFinIncBarWeekIdx] = useState<number>(0);
@@ -779,7 +880,20 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   const [finIncChartHoveredBar, setFinIncChartHoveredBar] = useState<number | null>(null);
   const [finIncChartBarAnimKey, setFinIncChartBarAnimKey] = useState(0);
   // Income Line Chart states
-  const [finIncLinePeriodMode, setFinIncLinePeriodMode] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('mensal');
+  const [finIncLinePeriodMode, setFinIncLinePeriodModeState] = useState<'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.fin_inc_line_period || 'mensal';
+    } catch { return 'mensal'; }
+  });
+  const setFinIncLinePeriodMode = (val: 'semanal' | 'mensal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual') => {
+    setFinIncLinePeriodModeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.fin_inc_line_period = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
   const [finIncLineYear, setFinIncLineYear] = useState<number>(new Date().getFullYear());
   const [finIncLineMonth, setFinIncLineMonth] = useState<number>(new Date().getMonth() + 1);
   const [finIncLineWeekIdx, setFinIncLineWeekIdx] = useState<number>(0);
@@ -967,11 +1081,70 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
   const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
   const [isFontSizeMenuOpen, setIsFontSizeMenuOpen] = useState(false);
   const [isMarkersMenuOpen, setIsMarkersMenuOpen] = useState(false);
-  const [activeBold, setActiveBold] = useState(false);
-  const [activeAlign, setActiveAlign] = useState('justifyLeft');
-  const [activeColor, setActiveColor] = useState('#000000');
-  const [activeFont, setActiveFont] = useState('Arial');
-  const [activeSize, setActiveSize] = useState('3');
+  const [activeBold, setActiveBoldState] = useState(false);
+  const setActiveBold = (val: boolean) => {
+    setActiveBoldState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.notes_bold = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeAlign, setActiveAlignState] = useState('justifyLeft');
+  const setActiveAlign = (val: string) => {
+    setActiveAlignState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.notes_align = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeColor, setActiveColorState] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.notes_color || '#000000';
+    } catch { return '#000000'; }
+  });
+  const setActiveColor = (val: string) => {
+    setActiveColorState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.notes_color = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeFont, setActiveFontState] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.notes_font || 'Arial';
+    } catch { return 'Arial'; }
+  });
+  const setActiveFont = (val: string) => {
+    setActiveFontState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.notes_font = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeSize, setActiveSizeState] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.notes_size || '3';
+    } catch { return '3'; }
+  });
+  const setActiveSize = (val: string) => {
+    setActiveSizeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.notes_size = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
 
   const [categoryToDelete, setCategoryToDelete] = useState<NoteCategory | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
@@ -1418,11 +1591,9 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
     const now = new Date().toLocaleString('pt-BR');
     setCurrentNote({ id: Date.now().toString(), title: '', content: '', createdAt: now, lastModified: now });
     setView('editor');
-    setActiveBold(false);
-    setActiveAlign('justifyLeft');
-    setActiveColor('#000000');
-    setActiveFont('Arial');
-    setActiveSize('3');
+    // Toolbar states are now persistent, so we don't reset them here 
+    // unless you want a fresh start for every note. 
+    // The user requested to save their preference.
   };
 
   const handleSaveAction = () => {
@@ -5384,7 +5555,35 @@ const Others: React.FC<OthersProps> = ({ isDarkMode, initialView, onViewChange, 
           {motivation && (
             <div className={`max-w-2xl w-full text-center px-6 sm:px-12 py-8 sm:py-10 rounded-[2rem] sm:rounded-[3.5rem] border-4 relative animate-fadeIn shadow-lg ${cardBg} border-slate-100 ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>
               <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-6 py-2 rounded-full border-2 bg-white border-slate-100 shadow-sm"><span className="text-2xl">✨</span></div>
-              <p className="font-black italic text-lg sm:text-2xl leading-relaxed tracking-tight">"{motivation}"</p>
+              <p className="font-black italic text-lg sm:text-2xl leading-relaxed tracking-tight underline decoration-slate-300 italic">"{motivation}"</p>
+                
+                <div className="flex justify-center gap-4 mt-8">
+                  <button 
+                    onClick={() => {
+                      const newHistory = [{ text: (motivation || ""), feedback: 'like' as const, date: new Date().toISOString() }, ...motivationHistory];
+                      saveMotivationHistory(newHistory);
+                      setSuccessMsg("Que bom que gostou!");
+                      setTimeout(() => setSuccessMsg(null), 3000);
+                    }}
+                    className="p-4 bg-white/20 hover:bg-white/40 rounded-3xl transition-all hover:scale-110 active:scale-95 flex items-center gap-3 backdrop-blur-md"
+                    title="Gostei"
+                  >
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 2 7.59 8.59C7.22 8.95 7 9.45 7 10v9c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+                    <span className="font-black text-[10px] uppercase tracking-widest">Gostei</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const newHistory = [{ text: (motivation || ""), feedback: 'dislike' as const, date: new Date().toISOString() }, ...motivationHistory];
+                      saveMotivationHistory(newHistory);
+                      generateMotivation();
+                    }}
+                    className="p-4 bg-white/20 hover:bg-white/40 rounded-3xl transition-all hover:scale-110 active:scale-95 flex items-center gap-3 backdrop-blur-md"
+                    title="Não gostei"
+                  >
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 22l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+                    <span className="font-black text-[10px] uppercase tracking-widest">Não gostei</span>
+                  </button>
+                </div>
             </div>
           )}
         </div>

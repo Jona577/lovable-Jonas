@@ -47,7 +47,20 @@ const Tasks: React.FC<TasksProps> = ({ isDarkMode, onViewChange }) => {
 
   const [timeframe, setTimeframe] = useState<'today' | 'other'>('today');
   const [creationTab, setCreationTab] = useState<'recommended' | 'custom'>('recommended');
-  const [sortBy, setSortBy] = useState<string>('Prioridade');
+  const [sortBy, setSortByState] = useState<string>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.tasks_sort || 'Prioridade';
+    } catch { return 'Prioridade'; }
+  });
+  const setSortBy = (val: string) => {
+    setSortByState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.tasks_sort = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
 
   const [tasks, setTasks] = useState<ExtendedTask[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

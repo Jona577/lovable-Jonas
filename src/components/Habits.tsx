@@ -78,7 +78,20 @@ const Habits: React.FC<HabitsProps> = ({ isDarkMode }) => {
   const [showValidationAlert, setShowValidationAlert] = useState(false);
   const [showDayWarning, setShowDayWarning] = useState(false);
   const [isRecommendedMode, setIsRecommendedMode] = useState(false);
-  const [sortBy, setSortBy] = useState<HabitSort>('alphabetical');
+  const [sortBy, setSortByState] = useState<HabitSort>(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return (prefs.habits_sort as HabitSort) || 'alphabetical';
+    } catch { return 'alphabetical'; }
+  });
+  const setSortBy = (val: HabitSort) => {
+    setSortByState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.habits_sort = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveStep, setSaveStep] = useState<'initial' | 'picking' | 'confirm'>('initial');

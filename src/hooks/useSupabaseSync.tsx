@@ -8,6 +8,8 @@ const SYNC_MAP: Record<string, string> = {
   'tasks': 'produtivity_tasks_v3',
   'categories': 'produtivity_categories',
   'goals': 'produtivity_goals',
+  'user_app_preferences': 'produtivity_app_preferences',
+  'motivation_history': 'produtivity_others_motivation_history',
   
   // Habits & Routines
   'habits': 'produtivity_habits_record_list',

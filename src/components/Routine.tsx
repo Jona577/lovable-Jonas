@@ -180,11 +180,70 @@ const Routine: React.FC<RoutineProps> = ({ isDarkMode }) => {
   const [isFontMenuOpen, setIsFontMenuOpen] = useState(false);
   const [isFontSizeMenuOpen, setIsFontSizeMenuOpen] = useState(false);
   const [isMarkersMenuOpen, setIsMarkersMenuOpen] = useState(false);
-  const [activeBold, setActiveBold] = useState(false);
-  const [activeAlign, setActiveAlign] = useState('justifyLeft');
-  const [activeColor, setActiveColor] = useState('#000000');
-  const [activeFont, setActiveFont] = useState('Arial');
-  const [activeSize, setActiveSize] = useState('3');
+  const [activeBold, setActiveBoldState] = useState(false);
+  const setActiveBold = (val: boolean) => {
+    setActiveBoldState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.routine_bold = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeAlign, setActiveAlignState] = useState('justifyLeft');
+  const setActiveAlign = (val: string) => {
+    setActiveAlignState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.routine_align = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeColor, setActiveColorState] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.routine_color || '#000000';
+    } catch { return '#000000'; }
+  });
+  const setActiveColor = (val: string) => {
+    setActiveColorState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.routine_color = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeFont, setActiveFontState] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.routine_font || 'Arial';
+    } catch { return 'Arial'; }
+  });
+  const setActiveFont = (val: string) => {
+    setActiveFontState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.routine_font = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
+  const [activeSize, setActiveSizeState] = useState(() => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      return prefs.routine_size || '3';
+    } catch { return '3'; }
+  });
+  const setActiveSize = (val: string) => {
+    setActiveSizeState(val);
+    try {
+      const prefs = JSON.parse(localStorage.getItem('produtivity_app_preferences') || '{}');
+      prefs.routine_size = val;
+      localStorage.setItem('produtivity_app_preferences', JSON.stringify(prefs));
+    } catch {}
+  };
 
   const fontMenuRef = useRef<HTMLDivElement>(null);
   const fontSizeMenuRef = useRef<HTMLDivElement>(null);
