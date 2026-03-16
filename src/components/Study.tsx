@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { generateAIResponse } from '@/lib/aiClient';
+import { generateMnemonic, generateCuriosityText, generateCuriosityImage } from '@/lib/edgeFunctions';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -603,6 +604,7 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
   const [curiosityHistory, setCuriosityHistory] = useState<CuriosityFeedback[]>([]);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showCuriosityDetails, setShowCuriosityDetails] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   // Mnemonic AI States
   const [mnemonicInput, setMnemonicInput] = useState('');
@@ -1810,7 +1812,7 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
   const handleReplaceMnemonic = async (id: string) => {
     setReplacingMnemonicId(id);
     try {
-      const { data, error } = await generateAIResponse({ action: 'replace_mnemonic', mnemonicInput });
+      const { data, error } = await generateMnemonic('replace_mnemonic', { mnemonicInput });
       if (error) throw error;
       const parsed = JSON.parse(data.content);
       setMnemonicResults(prev => prev.map(m => m.id === id ? { ...parsed, id: Date.now().toString() } : m));
@@ -1824,7 +1826,7 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
   const handleGenerateSimilar = async (parentMnemonic: MnemonicResult) => {
     setLoadingSimilarId(parentMnemonic.id);
     try {
-      const { data, error } = await generateAIResponse({ action: 'generate_similar', mnemonicInput, parentText: parentMnemonic.text });
+      const { data, error } = await generateMnemonic('generate_similar', { mnemonicInput, parentText: parentMnemonic.text });
       if (error) throw error;
 
       let content = data.content;
@@ -1860,7 +1862,7 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
         ? `\n\nREFERÊNCIA DE ESTILO (O usuário gosta de mnemônicos assim):\n${likedMnemonicsHistory.slice(0, 3).map(m => `- ${m.text}`).join('\n')}`
         : '';
 
-      const { data, error } = await generateAIResponse({ action: 'generate_mnemonic', rawInput, favoritesContext });
+      const { data, error } = await generateMnemonic('generate_mnemonic', { rawInput, favoritesContext });
       if (error) throw error;
 
       let resultText = data.content.trim();
@@ -2085,6 +2087,7 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
     setCuriosityStep('loading');
     setCuriosityData(null);
     setShowCuriosityDetails(false);
+    setIsImageLoaded(false);
     setIsGeneratingImage(true);
 
     try {
@@ -2114,63 +2117,81 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
         targetDiscipline = relevantHistory.length > 0 ? relevantHistory[0].discipline || '' : '';
       }
 
-      let prompt = `Você é uma autoridade científica mundial, uma IA especializada em curiosidades fascinantes, profundas e extremamente detalhadas. `;
-
-      if (targetDiscipline && subjectsReference[targetDiscipline as keyof typeof subjectsReference]) {
-        prompt += `
-          FOCO ABSOLUTO: Disciplina de ${targetDiscipline}.
-          MATÉRIAS PERMITIDAS (Nível Universitário/Avançado):
-          - Disciplina Alvo: ${targetDiscipline}
-          - Lista de Tópicos Sugeridos: ${subjectsReference[targetDiscipline as keyof typeof subjectsReference].join(', ')}
-          
-          REGRAS OBRIGATÓRIAS DE CONTEÚDO:
-          1. Sua resposta DEVE orbitar em torno de ${targetDiscipline}.
-          2. INTERDISCIPLINARIDADE: Você deve conectar o tema com outras áreas para criar um panorama holístico, mas a base teórica principal deve ser ${targetDiscipline}.
-          3. O texto deve ser RICO EM CONTEÚDO, evitando generalidades e o "senso comum". Traga descobertas recentes ou mecanismos complexos.
-        `;
+      let promptIdea = `Gere uma ideia curiosa e visual que possa ser ilustrada em uma imagem. Responda apenas com a ideia, em até 10 palavras. A ideia deve ser visual, curiosa e estar relacionada a ciência, natureza, história ou fatos surpreendentes.`;
+      
+      if (targetDiscipline) {
+        promptIdea += ` Foco principal: ${targetDiscipline}.`;
       } else {
-        prompt += `FOCO: Área de ${category}.`;
+        promptIdea += ` Foco principal: ${category}.`;
       }
 
-      prompt += `
-        INSTRUÇÕES DE FORMATO (RETORNE APENAS JSON):
-        {
-          "discipline": "${targetDiscipline || category}",
-          "title": "Um título MUITO simples, curto e direto ao ponto",
-          "curiosity": "Texto da curiosidade principal. Deve ser uma narrativa EXTREMAMENTE EXTENSA, detalhada e cativante (MÍNIMO DE 350 PALAVRAS).",
-          "details": "Uma explicação TÉCNICA, ACADÊMICA E CIENTÍFIDA PROFUNDA (MÍNIMO DE 650 PALAVRAS).",
-          "topic": "A matéria/tópico exato abordado",
-          "image_prompt": "Uma descrição visual cinematográfica e ultra-detalhada da cena descrita no texto. Estilo Pixar 3D moderno, iluminação volumétrica, qualidade 8K."
-        }
-      `;
+      // 1. GERAR IDEIA VISUAL
+      const { data: ideaData, error: ideaError } = await generateCuriosityText(promptIdea);
+      if (ideaError || !ideaData?.content) throw ideaError || new Error("Falha ao gerar ideia");
+      
+      let ideaText = ideaData.content.replace(/["\n]/g, '').trim();
 
-      const { data: textData, error: textError } = await generateAIResponse({ action: 'generate_curiosity', prompt });
-      if (textError) throw textError;
+      // 2. GERAR IMAGEM
+      const imagePromptGen = `Create a short visual prompt in english to generate a highly detailed, cinematic and realistic image based on this idea: "${ideaText}". Return only the english prompt.`;
+      const { data: imgPromptData } = await generateCuriosityText(imagePromptGen);
+      const imagePrompt = imgPromptData && imgPromptData.content ? imgPromptData.content.trim() : `realistic illustration of ${ideaText}, cinematic lighting`;
 
-      let textContent = textData.content;
-      if (textContent.includes("```")) textContent = textContent.replace(/```json|```/g, "").trim();
-      const data = JSON.parse(textContent);
-
-      // Now generate image
       let imageUrl = "";
-      try {
-        const { data: imgData, error: imgError } = await generateAIResponse({ action: 'generate_curiosity_image', imagePrompt: data.image_prompt });
-        if (!imgError && imgData?.content) {
-          // The image content from the gateway - try to use it
-          imageUrl = "";
+      let attemptImage = 0;
+      let successImage = false;
+
+      while (attemptImage < 2 && !successImage) {
+        try {
+          const { data: imgData, error: imgError } = await generateCuriosityImage(imagePrompt);
+          if (!imgError && imgData?.imageUrl) {
+            imageUrl = imgData.imageUrl;
+            successImage = true;
+          } else {
+            attemptImage++;
+          }
+        } catch (imgError) {
+          attemptImage++;
         }
-      } catch (imgError) {
-        console.warn("Falha ao gerar imagem, prosseguindo apenas com texto.", imgError);
       }
 
+      if (!successImage) {
+        throw new Error("Falha ao gerar imagem após múltiplas tentativas.");
+      }
+
+      // 3. GERAR TEXTO DA CURIOSIDADE
+      const promptText = `Explique de forma interessante e curta a curiosidade: "${ideaText}". O texto deve ter no máximo 3 frases.`;
+      
+      let curiosityTextContent = "";
+      let attemptText = 0;
+      let successText = false;
+
+      while (attemptText < 2 && !successText) {
+        try {
+          const { data: textData, error: textError } = await generateCuriosityText(promptText);
+          if (!textError && textData?.content) {
+            curiosityTextContent = textData.content.trim();
+            successText = true;
+          } else {
+            attemptText++;
+          }
+        } catch(e) {
+          attemptText++;
+        }
+      }
+
+      if (!successText) {
+        throw new Error("Falha ao gerar o texto da curiosidade.");
+      }
+
+      // 4. MOSTRAR IMAGEM E TEXTO
       setCuriosityData({
-        title: data.title,
-        text: data.curiosity,
-        details: data.details,
+        title: ideaText.charAt(0).toUpperCase() + ideaText.slice(1),
+        text: curiosityTextContent,
+        details: "",
         imageUrl: imageUrl,
         category: category,
-        topic: data.topic,
-        discipline: data.discipline
+        topic: "Curiosidade",
+        discipline: targetDiscipline || category
       });
       setCuriosityStep('result');
       setErrorMsg(null);
@@ -2290,48 +2311,65 @@ const Study: React.FC<StudyProps> = ({ isDarkMode, onOpenDetail, onViewChange })
 
             <div className="p-12 flex flex-col items-center">
               {curiosityData.imageUrl && (
-                <div className="w-full mb-12 group relative max-w-3xl">
-                  <img
-                    src={curiosityData.imageUrl}
-                    alt="Representação visual do tema"
-                    className="w-full aspect-square object-cover rounded-[3.5rem] border-black border-black shadow-2xl"
-                  />
-                  <div className="absolute inset-0 bg-black/5 rounded-[3.5rem] pointer-events-none"></div>
-                </div>
-              )}
-              <div className="w-full space-y-10 max-w-4xl">
-                <div className="text-slate-700 text-2xl font-medium leading-[1.6] whitespace-pre-line border-l-8 border-black pl-8">
-                  {curiosityData.text}
-                </div>
-
-                <div className="pt-6">
-                  {!showCuriosityDetails ? (
-                    <button
-                      onClick={() => setShowCuriosityDetails(true)}
-                      className="w-full flex items-center justify-center gap-4 text-[#3B82F6] font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.01] bg-blue-50 px-10 py-8 rounded-[2.5rem] transition-all hover:bg-blue-100 border-black border-blue-200"
-                    >
-                      Aprofundar Conhecimento: Ver Dossiê Científico Extenso
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                  ) : (
-                    <div className="p-12 bg-blue-50/50 rounded-[4rem] border-black border-blue-100 animate-fadeIn shadow-inner">
-                      <div className="flex justify-between items-center mb-10">
-                        <div className="flex items-center gap-4">
-                          <div className="w-3 h-10 bg-blue-500 rounded-full"></div>
-                          <h4 className="text-blue-600 font-black text-sm uppercase tracking-[0.3em]">Relatório Acadêmico de Alta Complexidade</h4>
-                        </div>
-                        <button onClick={() => setShowCuriosityDetails(false)} className="text-slate-400 hover:text-black font-black text-xs uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">Fechar Dossiê</button>
-                      </div>
-                      <div className="text-slate-800 text-lg font-medium leading-[1.8] italic whitespace-pre-line text-justify px-4">
-                        {curiosityData.details}
-                      </div>
-                      <div className="mt-12 flex justify-center">
-                        <button onClick={() => setShowCuriosityDetails(false)} className="px-10 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-blue-700 transition-all">Concluir Leitura Técnica</button>
+                <div className="w-full mb-12 group relative max-w-sm mx-auto">
+                  {!isImageLoaded && (
+                    <div className="w-full aspect-square bg-slate-200 animate-pulse rounded-[3.5rem] border-black border-black shadow-2xl flex items-center justify-center">
+                      <div className="text-slate-400 font-bold uppercase tracking-widest text-sm flex flex-col items-center gap-3">
+                        <svg className="w-8 h-8 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Carregando Mídia Visual...
                       </div>
                     </div>
                   )}
+                  <img
+                    src={curiosityData.imageUrl}
+                    alt="Representação visual do tema"
+                    onLoad={() => setIsImageLoaded(true)}
+                    onError={() => {
+                      console.error('Falha ao renderizar a imagem.');
+                      setIsImageLoaded(true); // Força a exibição do texto mesmo sem imagem
+                    }}
+                    className={`w-full aspect-square object-cover rounded-[3.5rem] border-black border-black shadow-2xl ${isImageLoaded ? 'block' : 'hidden'}`}
+                  />
+                  {isImageLoaded && <div className="absolute inset-0 bg-black/5 rounded-[3.5rem] pointer-events-none"></div>}
                 </div>
+              )}
+              {(!curiosityData.imageUrl || isImageLoaded) && (
+                <div className="w-full space-y-10 max-w-4xl animate-fadeIn">
+                  <div className="text-slate-700 text-2xl font-medium leading-[1.6] whitespace-pre-line border-l-8 border-black pl-8">
+                    {curiosityData.text}
+                  </div>
+
+                {curiosityData.details && (
+                  <div className="pt-6">
+                    {!showCuriosityDetails ? (
+                      <button
+                        onClick={() => setShowCuriosityDetails(true)}
+                        className="w-full flex items-center justify-center gap-4 text-[#3B82F6] font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.01] bg-blue-50 px-10 py-8 rounded-[2.5rem] transition-all hover:bg-blue-100 border-black border-blue-200"
+                      >
+                        Aprofundar Conhecimento: Ver Dossiê Científico Extenso
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                    ) : (
+                      <div className="p-12 bg-blue-50/50 rounded-[4rem] border-black border-blue-100 animate-fadeIn shadow-inner">
+                        <div className="flex justify-between items-center mb-10">
+                          <div className="flex items-center gap-4">
+                            <div className="w-3 h-10 bg-blue-500 rounded-full"></div>
+                            <h4 className="text-blue-600 font-black text-sm uppercase tracking-[0.3em]">Relatório Acadêmico de Alta Complexidade</h4>
+                          </div>
+                          <button onClick={() => setShowCuriosityDetails(false)} className="text-slate-400 hover:text-black font-black text-xs uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">Fechar Dossiê</button>
+                        </div>
+                        <div className="text-slate-800 text-lg font-medium leading-[1.8] italic whitespace-pre-line text-justify px-4">
+                          {curiosityData.details}
+                        </div>
+                        <div className="mt-12 flex justify-center">
+                          <button onClick={() => setShowCuriosityDetails(false)} className="px-10 py-4 bg-blue-600 text-white font-black rounded-2xl uppercase text-xs tracking-widest hover:bg-blue-700 transition-all">Concluir Leitura Técnica</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+              )}
             </div>
 
             <div className="bg-slate-50 p-12 border-t-2 border-slate-100 flex flex-col items-center">
